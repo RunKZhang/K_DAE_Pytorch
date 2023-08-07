@@ -1,107 +1,33 @@
 import torch
 import torch.nn as nn
-from src.autoencoder import AutoEncoder, train_AE
-from src.utils import pretrain_k_means
+from collections import OrderedDict
 from torch.cuda import is_available
-import numpy as np
-from torch.utils.data import Subset, DataLoader
+from src.autoencoder import AutoEncoder
 
-class KDae(nn.Module):
-    def __init__(self, input_dim, latent_dim, num_cluster, pretrain_epoch, pretrain_ae_dims, 
-                 train_epoch, train_ae_dims, train_dataset_np_samples, train_dataset_np_targets,
-                 train_set):
-        super(KDae, self).__init__()
+class K_DAE(nn.Module):
+    def __init__(self, input_dim, hidden_dims, latent_dim, n_clusters):
+        super(K_DAE, self).__init__()
         self.input_dim = input_dim
+        self.hidden_dims = hidden_dims
         self.latent_dim = latent_dim
-        self.num_cluster = num_cluster
-        self.pretrain_epoch = pretrain_epoch
-        self.train_epoch = train_epoch
-        self.pretrain_ae_dims = pretrain_ae_dims
-        self.train_ae_dims = train_ae_dims
-        self.pretrain_ae = None # the pretrain ae model
-        self.pretrain_kmeans_labels = None
-        self.train_dataset_np_samples = train_dataset_np_samples
-        self.train_dataset_np_targets = train_dataset_np_targets
-        self.train_set = train_set
-        # self.kdae = nn.ModuleDict() # the kdae model
-        self.kdae = nn.ModuleList() # the kdae model
-        self.device = torch.device('cuda' if is_available() else 'cpu')
+        self.n_clusters = n_clusters
 
-        self.is_entire_pretrain = False
-        self.is_separate_train = False
-
-    
-    # used to initial the autoencoder trained on entire dataset.
-    def _initial_clustering(self, _dataloader, verbose=True):
-        # print(self.device)
-        self.pretrain_ae = AutoEncoder(self.input_dim, self.pretrain_ae_dims,
-                                       self.latent_dim, self.num_cluster).to(self.device)
-        lr = 1e-4
-        wd = 5e-4
-        pretrain_criterion = nn.MSELoss()
-        pretrain_ae_optimizer = torch.optim.Adam(self.pretrain_ae.parameters(),
-                                          lr=lr,
-                                          weight_decay=wd)
-        if verbose:
-            print('========== Start Entire Dataset pretraining ==========')
-
-        self.pretrain_ae = train_AE(self.pretrain_ae, self.pretrain_epoch, pretrain_ae_optimizer,
-                                 pretrain_criterion, _dataloader)
-        self.pretrain_ae.eval()
-        batch_X = []
-
-        if verbose:
-            print('========== Catch labels ==========')      
-        
-        batch_X = self.train_dataset_np_targets
-
-        # Use KMeans to find labels
-        pretrain_k_means_model = pretrain_k_means(X=batch_X, num_clusters=self.num_cluster)
-        self.pretrain_kmeans_labels = pretrain_k_means_model.labels_
-
-        self.is_entire_pretrain = True
-        return None
-    
-    def _create_combination_model(self):
-        hidden_dims = self.train_ae_dims
-        for i in range(0, self.num_cluster):
-            self.kdae.append(AutoEncoder(self.input_dim, hidden_dims.copy(), # use copy instead of directly pass
+        # build the _k_dae in modulelist
+        self._k_dae = nn.ModuleList()
+        for i in range(0, self.n_clusters):
+            self._k_dae.append(AutoEncoder(self.input_dim, hidden_dims.copy(), # use copy instead of directly pass
                                           self.latent_dim, 1))
-        self.kdae.to(self.device)
-        return self.kdae
-    
-    def _separate_pre_train(self):
-        for i in range(0,self.num_cluster):
-            # selected_indices = [idx for idx, target in enumerate(self.train_set.targets) if target == 1]
-            selected_indices = [idx for idx in range(0,self.pretrain_kmeans_labels.shape[0]) if self.pretrain_kmeans_labels[idx] == 1]
-            subset = Subset(self.train_set, selected_indices)
-            sub_loader = DataLoader(subset, batch_size=256, shuffle=False)
-            lr = 1e-4
-            wd = 5e-4
-            _criterion = nn.MSELoss()
-            _optimizer = torch.optim.Adam(self.kdae[i].parameters(),
-                                          lr=lr,
-                                          weight_decay=wd)
-            print(f'========== Start {i}th cluster AE pretrain==========')
-            self.kdae[i] = train_AE(self.kdae[i], self.pretrain_epoch, 
-                                    _optimizer, _criterion, sub_loader)
 
-        return None
-    # @staticmethod
-    def k_dae_loss(y_pretrain_kmeans, y_pred):
+    def forward(self, x, kmeans_label):
+        # use two lists to get the index corresponding to cluster and output
+        output_list = []
+        idx_list = []
+        for i in range(self.n_clusters):
+            index = torch.argwhere(kmeans_label==i)
+            # print(index)
+            # print(index.shape)
+            value = self._k_dae[i](x[index.squeeze()])
+            idx_list.append(index)
+            output_list.append(value)
+        return idx_list, output_list
         
-        return None
-    
-    def fit(self):
-        # step 1: check if trained on entire dataset and obtain initial kmeans
-        # if self.is_entire_pretrain:
-            # _separate_pre_train()
-        # else:
-
-            # step 2: separately train each AE corresponding to cluster
-                # if self.is_separate_train:
-                    # step 3: tuning by using combine loss
-        return None
-    
-    def predict(self, x_data):
-        return None

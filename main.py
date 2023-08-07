@@ -4,7 +4,8 @@ import argparse
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 from src.autoencoder import AutoEncoder, train_AE
-from src.k_dae import KDae
+from src.k_dae import K_DAE
+from src.train_model import Train_Model
 
 # make a numpy array dataset for the original dataset, for select appointment targets.
 def _make_dataset_numpy(_dataset):
@@ -29,18 +30,21 @@ if __name__ == "__main__":
     train_set = datasets.MNIST(dir, train=True, download=False, transform=transforms)
     test_set = datasets.MNIST(dir, train=False, download=False, transform=transforms)
 
-    samples, targets = _make_dataset_numpy(train_set)
+    # samples, targets = _make_dataset_numpy(train_set)
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
 
-    selected_indices = [idx for idx, target in enumerate(train_set.targets) if target == 1]
-    print(len(selected_indices))
-    subset = Subset(train_set, selected_indices)
+    train_model = Train_Model(input_dim=28*28, latent_dim=10, n_clusters=10, pretrain_epoch=2, 
+                pretrain_ae_dims=[500, 500, 2000], train_epoch=50, train_ae_dims=[250,100])
+    train_model._initial_clustering(train_loader)
+    # selected_indices = [idx for idx, target in enumerate(train_set.targets) if target == 1]
+    # print(len(selected_indices))
+    # subset = Subset(train_set, selected_indices)
     # for idx, (data, label) in enumerate(subset):
     #     print(data.shape)        
     #     print(label)
-
+    
     # 10 clusters
     # n_cluster = 10
     # AE = AutoEncoder(input_dim=28 * 28,
@@ -50,20 +54,23 @@ if __name__ == "__main__":
     # print(AE)
     # trained_model = train_AE(AE, )
 
-    KDAE = KDae(input_dim=28*28, latent_dim=10, num_cluster=10, pretrain_epoch=2, 
-                pretrain_ae_dims=[500, 500, 2000], train_epoch=50, train_ae_dims=[250,100],
-                train_dataset_np_samples = samples, train_dataset_np_targets = targets,
-                train_set = train_set)
-    KDAE._initial_clustering(train_loader)
-    model = KDAE._create_combination_model()
-    KDAE._separate_pre_train()
+    # KDAE = KDae(input_dim=28*28, latent_dim=10, num_cluster=10, pretrain_epoch=2, 
+    #             pretrain_ae_dims=[500, 500, 2000], train_epoch=50, train_ae_dims=[250,100],
+    #             train_dataset_np_samples = samples, train_dataset_np_targets = targets,
+    #             train_set = train_set)
+    # KDAE._initial_clustering(train_loader)
+    # model = KDAE._create_combination_model()
+    # KDAE._separate_pre_train()
+    # KDAE.fit()
     # print(model)
     
-    # test_batch, _ = next(iter(train_loader))
+    # test_batch, test_label = next(iter(train_loader))
     # print(test_batch.shape)
     # batch_size = test_batch.size()[0]
     # data = test_batch.view(batch_size, -1)
-    # print(model(test_batch.shape))
+    # model = K_DAE(28*28, [500,100], 10, 10)
+    # index, value = model.forward(data,test_label)
+    # print(value[0].shape)
     # model = KDae(number_cluster=n_cluster, k_dae_epoch=40, epoch_ae=10, initial_epoch=80, dataset_name=dataset_name)
     # model.fit(x_train, y_train, dataset_name=dataset_name)
     # y_pred = model.predict(x_train)
