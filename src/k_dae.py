@@ -21,13 +21,26 @@ class K_DAE(nn.Module):
     def forward(self, x, kmeans_label):
         # use two lists to get the index corresponding to cluster and output
         output_list = []
-        idx_list = []
         for i in range(self.n_clusters):
-            index = torch.argwhere(kmeans_label==i)
-            # print(index)
-            # print(index.shape)
-            value = self._k_dae[i](x[index.squeeze()])
-            idx_list.append(index)
+            value = self._k_dae[i](x)
+            value = value.unsqueeze(dim=1)
+            # print(value.shape)
             output_list.append(value)
-        return idx_list, output_list
+        output_tensor = torch.cat(output_list, dim=1)
+        print(output_tensor.shape)
+            # print(value.shape)
+        # output_list = []
+        # idx_list = []
+        # for i in range(x.shape[0]):
+        #     print(x[i].shape)
+        #     value = self._k_dae[kmeans_label[i]](x[i])
+        # for i in range(self.n_clusters):
+        #     index = torch.argwhere(kmeans_label==i)
+        #     # print(index)
+        #     # print(index.shape)
+        #     value = self._k_dae[i](x[index.squeeze()])
+        #     idx_list.append(index)
+        #     output_list.append(value)
+        # return idx_list, output_list
+        return output_tensor
         
