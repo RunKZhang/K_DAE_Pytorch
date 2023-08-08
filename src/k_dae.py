@@ -18,8 +18,8 @@ class K_DAE(nn.Module):
             self._k_dae.append(AutoEncoder(self.input_dim, hidden_dims.copy(), # use copy instead of directly pass
                                           self.latent_dim, 1))
 
-    def forward(self, x, kmeans_label):
-        # use two lists to get the index corresponding to cluster and output
+    def forward(self, x):
+        # output the min value obtained by l2 norm
         output_list = []
         for i in range(self.n_clusters):
             value = self._k_dae[i](x)
@@ -27,20 +27,16 @@ class K_DAE(nn.Module):
             # print(value.shape)
             output_list.append(value)
         output_tensor = torch.cat(output_list, dim=1)
-        print(output_tensor.shape)
-            # print(value.shape)
-        # output_list = []
-        # idx_list = []
-        # for i in range(x.shape[0]):
-        #     print(x[i].shape)
-        #     value = self._k_dae[kmeans_label[i]](x[i])
-        # for i in range(self.n_clusters):
-        #     index = torch.argwhere(kmeans_label==i)
-        #     # print(index)
-        #     # print(index.shape)
-        #     value = self._k_dae[i](x[index.squeeze()])
-        #     idx_list.append(index)
-        #     output_list.append(value)
-        # return idx_list, output_list
-        return output_tensor
+        x_reshape = x.unsqueeze(1).expand(-1,10,-1)
+        l2_norm = torch.norm(output_tensor-x_reshape, dim=-1)
+        # print(f'l2_norm:{l2_norm}')
+        # print(f'l2_norm.shape :{l2_norm.shape}')
+        min_indices = torch.argmin(l2_norm, dim=-1)
+        # print(f'min_indices: {min_indices.shape}')
+        # print(f'min_indices: {min_indices}')
+        selected_tensor = output_tensor[torch.arange(output_tensor.size(0)),min_indices]
+        
+        # print(f'selected_tensor: {selected_tensor.shape}')
+        # print(output_tensor.shape)
+        return selected_tensor
         

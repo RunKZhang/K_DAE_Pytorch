@@ -35,11 +35,12 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
 
-    # train_model = Train_Model(input_dim=28*28, latent_dim=10, n_clusters=10, pretrain_epoch=2, 
-    #             pretrain_ae_dims=[500, 500, 2000], train_epoch=2, train_ae_dims=[250,100],
-    #             train_dataset=train_set, test_dataset=test_set)
+    train_model = Train_Model(input_dim=28*28, latent_dim=10, n_clusters=10, pretrain_epoch=1, 
+                pretrain_ae_dims=[500, 500, 2000], train_epoch=1, train_ae_dims=[250,100],
+                tunning_epoch = 5, train_dataset=train_set, test_dataset=test_set)
     # train_model._initial_clustering(train_set, train_loader)
-    # train_model.fit()
+    train_model.fit()
+    # train_model._tunning()
     # selected_indices = [idx for idx, target in enumerate(train_set.targets) if target == 1]
     # print(len(selected_indices))
     # subset = Subset(train_set, selected_indices)
@@ -70,14 +71,20 @@ if __name__ == "__main__":
     print(test_batch.shape)
     batch_size = test_batch.size()[0]
     data = test_batch.view(batch_size, -1)
-    print(data.shape)
+    print(data)
     model = K_DAE(28*28, [500,100], 10, 10)
     # print(model._k_dae.parameters())
     # for module in model._k_dae:
     #     print(module)
     # index, value = model.forward(data,test_label)
-    output_tensor = model(data, test_label)
-    print(output_tensor.shape)
+    output_tensor = model(data)
+    # print(output_tensor.shape)
+    data_new = data.unsqueeze(1).expand(-1, 10, -1)
+    print(output_tensor)
+    # print(data)
+    # print(data_new)
+    # print(data-output_tensor)
+    # print(output_tensor.shape)
     # print(value[0].shape)
     # model = KDae(number_cluster=n_cluster, k_dae_epoch=40, epoch_ae=10, initial_epoch=80, dataset_name=dataset_name)
     # model.fit(x_train, y_train, dataset_name=dataset_name)
