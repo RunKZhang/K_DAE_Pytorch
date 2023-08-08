@@ -38,5 +38,5 @@ class K_DAE(nn.Module):
         
         # print(f'selected_tensor: {selected_tensor.shape}')
         # print(output_tensor.shape)
-        return selected_tensor
+        return selected_tensor, min_indices
         
